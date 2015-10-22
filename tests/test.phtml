@@ -1,0 +1,33 @@
+<?php
+/**
+ * Login template
+ *
+ * @package     pBook
+ * @author      Vallo Reima
+ * @copyright   (C)2015
+ */
+?>
+<style type="text/css">
+<?php include(CSSD   .   $nme . '.css'); // styles?>
+</style>
+<form id="<?=  $nme ; ?>" autocomplete = "off"">
+  <div class="msgraw" id="msgraw"><?=($msgraw); ?></div>
+  <div class="creds">
+    <div class="eyd" ><?= t('txt.eyd'); ?></div>
+    <label for="usr" id="l_usr"><?php echo(¤::_(' txt.usr')); ?></label>
+    <input type="text" id="usr" maxlength="15" value="<?=($usr); ?>" />
+    <label for="psw" id="l_psw"><?php echo(¤::_('txt.psw')); /* check */?></label>
+    <input type="password" id="psw" maxlength="15" value="<?=($psw); ?>" />
+    <label for="owr" id="l_owr"><?=(¤::_('txt.unt')); ?></label>
+    <input type="text" id="owr" maxlength="15" value="<?=($owr); ?>" />
+    <div class="endFloat"></div>
+  </div>
+  <div class="chklin">
+    <input type="checkbox" id="prs" value="prs"<?php echo    $ckd; ?> />
+    <label for="prs" id="l_prs"><?= 'personal'; ?></label>
+  </div>
+</form>
+<?php include TPLD . 'transit' . TPL; ?>
+<script type="text/javascript">
+<?php include JSD . "$nme.js "; ?>
+</script>
