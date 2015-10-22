@@ -1,6 +1,6 @@
 # PHP Application Packer #
 
-A complete solution to pack your application project files into the delivery package. The source code is minified and obfuscated, impeding unauthorized use.
+PackApp.php is a complete solution to pack your application project files into the delivery package. The source code is minified and obfuscated, impeding unauthorized use.
 
 The target audience: ISVs, freelancers, developers, resellers,  all who need a lightweight utility to turn the project into the delivery package. 
 The solution is oriented to the PHP applications, but can be used for your front-end projects too.
