@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+Configuration
+@package Filer 
+@copyright (C)2014
+-->
+<cfg>
+  <!-- Application properties -->
+  <apn>
+    <name>vRfiler </name>
+    <vers>1.1.1</vers>
+    <copr>vRegistry</copr>
+    <year>2014</year>
+    <mail> </mail>
+  </apn>
+</cfg>
