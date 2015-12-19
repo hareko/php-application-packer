@@ -22,11 +22,17 @@ require('PackApp.php'); // main class, loads the others if needed
 $old = 'tests'; // source folder
 $new = 'tests.zip'; // destination zipped
 
-$obj = new PackApp(1); // minify the source and obfuscate JavaScript code
-$rlt = $obj->Pack($old, $new, true);  // pack the source and get result data; replace existing data
+/* js and php obfuscation; maximum replacement of the PHP identifiers except 'vv' identifier; defined constants can be case-insensitive */
+$obj = new PackApp(1, ['ids' => 'VdHFTC', 'exi' => ['vv'], 'log' => 1]); // instantiate
+$rlt = $obj->Pack($old, $new, false);  // pack the source and get result data; replace existing data
 
 header('Content-Type: text/html; charset=utf-8');
-echo (str_replace(["\t", "\n"], ['&nbsp;&nbsp;', '<br>'], $rlt['string'])); // display information in html
+if (is_string($rlt['factor'])) {
+  echo $rlt['factor']; // switch to setup
+} else {
+  $r = $rlt['code'] == 'ok' ? 'string' : 'prompt';  // either protocol or message
+  echo (str_replace(["\t", "\n"], ['&nbsp;&nbsp;', '<br>'], $rlt[$r])); // display with html
+}
 
 if ($rlt['code'] == 'ok') {//success
   file_put_contents(pathinfo(__FILE__, PATHINFO_FILENAME) . '.txt', $rlt['string']); // save the protocol
