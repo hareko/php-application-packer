@@ -1,18 +1,17 @@
 <?php
 
-/*
+/**
+ * PHP Application Packer (PackApp.php)
  * Pack the PHP Application files
  * 
  * Requirements:
  *  PHP 5.3+ with mbstring, zip
- *  Dependencies: add-ons - PackCSS, PackHTM, PackJS, PackJSON, PackPHP, PackXML
- *                extension - PackAppE
+ *  Dependencies: plugins - PackCSS, PackHTM, PackJS, PackJSON, PackPHP, PackXML
  *
  * @package Packer
  * @author Vallo Reima
  * @copyright (C)2015
  */
-
 abstract class Minify {
 
   const DS = DIRECTORY_SEPARATOR;
@@ -20,22 +19,37 @@ abstract class Minify {
   const FOL = 2;  /* folder mode */
   const ARC = 3;  /* archives mode */
 
-  private $tit; /* program name */
-  private $sgr = '';  /* packer signature */
-  /* file types allowed: wildcard => dependencies; '!' means other add-on, e.g. *.inc is passed to php add-on */
+  protected $tit; /* program name */
+  protected $opt = [ /* initial options */
+      'lvl' => 0,
+      'src' => '',
+      'dst' => '',
+      'sgn' => '', /* signature: false - suppress */
+      'exf' => ['*.min.*'], /* files packing exclusion */
+      'cpy' => true, /* copy non-minified too */
+      'sbd' => true, /* recurse sub-directories */
+      'sfx' => '_pkd', /* default destination name suffix */
+      'pgn' => [], /* user plugins */
+      'arc' => 'zip', /* archives type */
+      'tml' => 30, /*  time limit in seconds a script is allowed to run */
+      'log' => 0, /* logging: 0,1,2 */
+      'dbg' => false /* debug mode */
+  ];
+  /* file types allowed: wildcard => dependencies; '!' means other plugin, e.g. *.inc is passed to php plugin */
   private $tps = ['*htm*' => ['php', 'js', 'css'], 'css*' => ['php'], 'js' => ['php'], 'json' => ['php'], 'xml' => [], 'php*' => [], 'inc' => ['!php']];
   private $pks = []; /* packer counters: type => counter */
   protected $lvl; /* processing level */
   protected $set; /* processing settings */
-  protected $pth = [];  /* paths: extension, add-ons */
-  protected $ans = [];  /* add-ons list: [type => ['fnc','arr'] */
-  protected $nms = ['minify', 'Pack', 'E'];  /* names */
+  protected $pth = [];  /* paths: extension, plugins */
+  protected $pgs = [];  /* plugins list: [type => ['fnc','arr'] */
+  protected $nms = ['ans' => 'addons', 'pgs' => 'plugins', 'min' => 'minify', 'pck' => 'Pack', 'srv' => 'S', 'ext' => 'E', 'cln' => ''];  /* names */
   protected $ext = null; /* extension object */
-  protected $obs = [];  /* obsfucation counters */
+  protected $obs = [];  /* obfuscation counters */
   private $tzn; /* user timezone */
   private $cnt = [0, 0, 0, [0.0, 0.0]];   /* count of files total, minified files, total lines, total symbols */
   private $tme = [0, 60]; /* start time, default exec time / elapsed time */
   private $smp = '';  /* packed content stamp */
+  private $lgf = '';  /* log file */
   private $err = false; /* error flag */
   protected $rlt = ['', '', [], ''];     /* result data: token, short message, counters|html, details text */
 
@@ -46,25 +60,26 @@ abstract class Minify {
    */
   public function __construct($lvl, $opt) {
     date_default_timezone_set(@date_default_timezone_get()); // define if not defined
-    $this->tit = basename(__FILE__);
-    $this->sgr = "$this->tit v$this->ver $this->tkn";  // signature
-    $this->nms[2] = pathinfo(__FILE__, PATHINFO_FILENAME) . $this->nms[2];  // extension classname
     $this->lvl = $lvl;
-    $this->Options($opt);
+    $fle = __FILE__;  // base filename
+    $this->tit = basename($fle);
     $this->tzn = date_default_timezone_get(); // save user zone
     date_default_timezone_set('UTC'); // work in utc
+    $this->tme = microtime(true);
+    $this->Options($opt);
     set_time_limit($this->set->tml);
-    $this->tme[0] = microtime(true);
+    $this->lgf = substr($fle, 0, -strlen(pathinfo($fle, PATHINFO_EXTENSION))) . 'log';
     $this->tps[$this->set->arc] = null; /* add as valid filetype */
-    $this->pth[0] = pathinfo(__FILE__, PATHINFO_DIRNAME);
-    $this->pth[1] = $this->pth[0] . self::DS . $this->nms[0]; // add-ons path
-    $this->Setup();
-    if ($this->ext === false && $lvl > 1) { // irrelevant level
-      $this->lvl = $lvl % 2;  // adjust level
+    $pth = pathinfo($fle, PATHINFO_DIRNAME);  /* root path */
+    foreach (['ans', 'pgs'] as $p) {  // the paths 
+      $this->pth[$p] = $pth . self::DS . $this->nms[$p]; // sub-dir
+      if (!is_dir($this->pth[$p])) {
+        $this->pth[$p] = dirname($pth) . self::DS . $this->nms[$p]; // sibling dir
+      }
     }
-    if (!is_null($this->set->sgn)) { // prepend to php/js/css output
-      $s = (empty($this->set->sgn) ? $this->sgr : $this->set->sgn) . ' ' . $this->Date();
-      $this->smp = "/*! $s */";
+    $this->Setup();
+    if (is_null($this->ext) && $lvl > 1) { // irrelevant level
+      $this->lvl = $lvl % 2;  // adjust level
     }
   }
 
@@ -74,8 +89,11 @@ abstract class Minify {
    */
   private function Options($opt) {
     $set = [];
+    if (array_key_exists('sgn', $opt) && is_null($opt['sgn'])) { // skipped
+      $this->opt['sgn'] = null;
+    }
     foreach ($this->opt as $key => $val) {  // loop defaults
-      if (array_key_exists($key, $opt) && (!empty($opt[$key]) || empty($val) || is_array($val))) {  // user's value or allowed empty
+      if (array_key_exists($key, $opt) && (!empty($opt[$key]) || empty($val) || is_bool($val) || is_array($val))) {  // user's value or allowed empty
         $val = $opt[$key];
         if (!is_array($val)) {
           settype($val, gettype($this->opt[$key])); // adjust type
@@ -85,17 +103,25 @@ abstract class Minify {
       }
       $set[$key] = $val;
     }
-    if (array_key_exists('sgn', $opt) && is_null($opt['sgn'])) { // skipped
-      $set['sgn'] = null;
-    }
     if ($set['tml'] < $this->opt['tml'] || $set['tml'] > 60 * $this->opt['tml']) {  // out of limits
       $set['tml'] = $this->opt['tml']; // default time limit
+    }
+    /* signature/stamp setting */
+    $set['sgr'] = "$this->tit v{$this->ver} {$this->lic}";
+    $this->opt['sgn'] = !is_null($set['sgn']);
+    if (!$set['sgn']) {
+      $set['sgn'] = "{$set['sgr']} {time}";
+    }
+    $this->opt['sgr'] = $set['sgn'];
+    $set['sgn'] = str_replace('{time}', $this->Date(), $set['sgn']);
+    if ($this->opt['sgn']) { // prepend to php/js/css output
+      $this->smp = '/*! ' . $set['sgn'] . ' */';
     }
     $this->set = (object) $set;
   }
 
   /**
-   * setup add-ons and extension
+   * setup plugins and extension
    */
   private function Setup() {
     $a = ['', []];
@@ -103,67 +129,64 @@ abstract class Minify {
       if (is_array($f)) {
         $t = trim($p, '*'); // strip wildcard chars
         $this->pks[$t] = 0; // counter
-        $this->ans[$t] = ['fnc' => [$this->nms[1] . mb_strtoupper($t), $this->nms[0]], 'arr' => $a];
+        $this->pgs[$t] = ['fnc' => [$this->nms['pck'] . mb_strtoupper($t), $this->nms['min']], 'arr' => $a];
       }
     }
-    foreach ($this->set->aon as $p => $f) {  // add user types 
+    foreach ($this->set->pgn as $p => $f) {  // add user types 
       $t = trim($p, '*'); // strip wildcard chars
       if (!isset($this->pks[$t]) ||
               (isset($this->tps[$p]) && count($this->tps[$p]) == 1 && mb_strpos($this->tps[$p][0], '!') !== false)) { // add or overwrite if '!' - item only
         $this->tps[$t] = $f === true ? ['php'] : [];  // php embedding or not
         $this->pks[$t] = 0;
-        $this->ans[$t] = ['fnc' => [$this->nms[1] . mb_strtoupper($t), $this->nms[0]], 'arr' => $a];
+        $this->pgs[$t] = ['fnc' => [$this->nms['pck'] . mb_strtoupper($t), $this->nms['min']], 'arr' => $a];
       }
     }
-    $this->ans['js']['arr'][1] = ['mth' => ''];  // default minify method
-    $this->ans['css']['arr'][1] = ['mth' => ''];  // RW is alternative
-    $this->ans['htm']['arr'][1] = ['jsMinifier' => $this->ans['js'], 'cssMinifier' => $this->ans['css']]; // callbacks
+    $this->pgs['js']['arr'][1] = ['mth' => ''];  // default minify method
+    $this->pgs['css']['arr'][1] = ['mth' => ''];  // RW is alternative
+    $this->pgs['htm']['arr'][1] = ['jsMinifier' => $this->pgs['js'], 'cssMinifier' => $this->pgs['css']]; // callbacks
     if ($this->lvl % 2 == 1) {
-      $this->ans['js']['arr'][1]['mth'] = 'O';  //obfuscate
+      $this->pgs['js']['arr'][1]['mth'] = 'O';  //obfuscate
     }
-    $v = $this->Extend(); // set extension
-    if ($v) { // set extended version
-      $v1 = explode('.', $this->ver);
-      $v2 = explode('.', $v);
-      $j = count($v1) - count($v2);
-      $v = implode('.', array_slice($v1, 0, $j)); // main release
-      for ($i = $j; $i < count($v1); $i++) { // form version number
-        $v .= '.' . ($v1[$i] + $v2[$i - $j]);
-      }
-      $this->sgr = str_replace($this->ver, $v, $this->sgr);  // update signature
+    $this->nms['cln'] = pathinfo(__FILE__, PATHINFO_FILENAME) . $this->nms['srv'];  // server class
+    $this->Server(); // connect server
+    $this->nms['cln'] = pathinfo(__FILE__, PATHINFO_FILENAME) . $this->nms['ext'];  // extension class
+    $this->Extend(); // extend functionality
+    if ($this->ext) {
+      $this->pgs['php']['arr'][1] = ['obn' => $this->ext, 'min' => !$this->set->dbg];  // obfuscate caller and minifying flag
+    } else if (is_null($this->ext)) {
+      $this->nms['cln'] = pathinfo(__FILE__, PATHINFO_FILENAME) . $this->nms['srv'];  // missing class
     }
   }
 
-  /**
-   * dummy extension
-   * @return string version
-   */
+  protected function Server() {
+    /* not implemented here */
+  }
+
   protected function Extend() {
-    $this->ext = false; // not applicable
-    return '';
+    /* not implemented here */
   }
 
   /**
    * minify and save
-   * @param type $old -- source file/folder/archives
-   * @param type $new -- destination
-   * @param type $rpl -- true - replace if exists
+   * @param string $old -- source file/folder/archives
+   * @param string $new -- destination
+   * @param bool $rpl -- true - replace if exists
    * @return array
    */
   public function Pack($old, $new = '', $rpl = false) {
+    $src = rtrim(str_replace('/', self::DS, (string) $old), self::DS);  // normalize 
+    if ($new) {
+      $dst = rtrim(str_replace('/', self::DS, (string) $new), self::DS);
+    } else {
+      $dst = $this->Destination($src);  // take default name 
+    }
     if (!$this->err) {  // mode set
-      $src = rtrim(str_replace('/', self::DS, (string) $old), self::DS);  // normalize 
-      if ($new) {
-        $dst = rtrim(str_replace('/', self::DS, (string) $new), self::DS);
-      } else {
-        $dst = $this->Destination($src);  // take default name 
-      }
       $tmp = sys_get_temp_dir() . self::DS . uniqid($this->set->arc); // temporary (un)packing folder
       $mde = $this->Mode($src, $dst);
     }
-    if (!$this->err) {  // mode set
+    if (!$this->err) {  // mode ok
       if (!$rpl && file_exists($dst)) {
-        $this->Msg('dse', $dst); // don't replace
+        $this->Msg('dse', basename($dst)); // don't replace
       } else if ($mde[0] == self::FIL) {
         $this->File($src, $dst);  // pack file to file
         if ($this->lvl > 1 && !$this->err) { // flag is ON and packed ok
@@ -195,6 +218,20 @@ abstract class Minify {
     } else { // success
       $this->rlt[3] = $this->Result($src, $dst);
     }
+    $a = explode(' - ', $this->rlt[1]);
+    $c = array_pop($a);
+    if (($this->set->log > 0 && $this->rlt[0] === 'ok') || $this->set->log > 1) {
+      $l = date('Y-m-d H:i:s', $this->tme) . " $c\n";
+      @file_put_contents($this->lgf, $l, FILE_APPEND); // log result
+    }
+    if (isset($this->opr)) {  // comshell
+      $b = explode("\n", $c);
+      $this->rlt[1] = explode(':', array_shift($b));
+      $this->rlt[1] = array_merge($this->rlt[1], $b);
+      if (!$this->err || $this->rlt[0] == 'dse') {
+        array_push($this->rlt[1], $dst, $src);  // pass to shell
+      }
+    }
     $rlt = ['code' => $this->rlt[0], 'prompt' => $this->rlt[1], 'factor' => $this->rlt[2], 'string' => $this->rlt[3]];
     return $rlt;
   }
@@ -222,10 +259,11 @@ abstract class Minify {
     $exd = mb_strtolower(pathinfo($dst, PATHINFO_EXTENSION)); // dest name extension 
     if (is_string($mde)) {  // invalid source
       $rlt = $this->Msg($mde, $src);
-    } else if ($mde > self::FIL && $exd != $this->set->arc && !is_null($this->Match($exd))) {
+    } else if (($mde == self::FIL && $exd != $exs) || /* file to unknown type */
+            ($mde > self::FIL && $exd != $this->set->arc && !is_null($this->Match($exd)))) {  // non-file to known type
       $rlt = $this->Msg('dsi', $dst);  // invalid destination
     } else if (!$this->ext && $this->lvl > 1) {
-      $rlt = $this->Msg('noe', $this->nms[2]); // no extension
+      $rlt = $this->Msg('nof', $this->nms['cln']); // no extension
     } else {
       $rlt = [$mde];
       if ($mde == self::FIL) {  // destination mode
@@ -273,7 +311,7 @@ abstract class Minify {
    */
   protected function PackZipU($src, $dst) {
     $zip = new ZipArchive;
-    if ($zip->open($src, ZipArchive::CHECKCONS)) {
+    if ($zip->open($src, ZipArchive::CHECKCONS) === true) {
       if ($zip->extractTo($dst)) {
         $rlt = $zip->numFiles;
       } else {
@@ -293,7 +331,7 @@ abstract class Minify {
    */
   protected function PackZipC($src, $dst) {
     $zip = new ZipArchive;
-    if ($zip->open($dst, ZipArchive::OVERWRITE)) {
+    if ($zip->open($dst, ZipArchive::OVERWRITE) === true) {
       $rlt = $this->Zip($src, $zip);
       if (is_string($rlt)) {
         $rlt = ['noa', $rlt]; // couldn't zip
@@ -323,7 +361,8 @@ abstract class Minify {
     );
     foreach ($itr as $fle => $spl) {
       if ($spl->isFile()) {
-        if ($zip->addFile($fle, substr($fle, $pos))) {  // add without root path
+        $nme = str_replace(self::DS, '/', substr($fle, $pos));  // normalize localname
+        if ($zip->addFile($fle, $nme)) {  // add a file
           $cnt++;
         } else {
           $cnt = $fle;  // couldn't add the file
@@ -339,21 +378,24 @@ abstract class Minify {
    * @param string $src 
    * @param string $dst 
    */
-  private function Folder($src, $dst) {
+  private function Folder($src, $dst, $skp = null) {
     $dir = opendir($src);
-    if (!is_dir($dst) && !@mkdir($dst)) {
+    if (!$dir) {
+      $this->Msg('noc', $src); // can't access input folder
+    } else if (!$skp) { //not skipping
+      $skp = !is_null($skp) && !is_null($this->PackCheck(basename($src), $this->set->exf));  // folder exclusion
+    }
+    if ((!$skp || $this->set->cpy) && $dir && !is_dir($dst) && !@mkdir($dst)) {
       $this->Msg('noc', $dst); // can't create output folder
-    } else {
-      $skp = !is_null($this->PackCheck(basename($src), $this->set->exf));  // folder exclusion
     }
     while (!$this->err && ($file = readdir($dir)) !== false) {
       if (( $file != '.' ) && ( $file != '..' )) {  // skip dot entries
         $fr = $src . self::DS . $file;
         $to = $dst . self::DS . $file;
-        if (is_dir($fr)) {
-          $this->Folder($fr, $to);  // recurse subfolder
-        } else {
+        if (!is_dir($fr)) {
           $this->File($fr, $to, $skp);    // pack the file
+        } else if ($this->set->sbd) {
+          $this->Folder($fr, $to, $skp);  // recurse subfolder
         }
       }
     }
@@ -373,8 +415,8 @@ abstract class Minify {
       $tpe = $this->Match(mb_strtolower(pathinfo($src, PATHINFO_EXTENSION)), true); // matching filetype & dependent ones
       $t = $tpe[0];
       $tpe[2] = '';
-      if (!isset($this->pks[$tpe[0]]) || !$this->Addons($tpe)) {
-        $tpe[0] = null; // no add-on
+      if (!isset($this->pks[$tpe[0]]) || !$this->Plugin($tpe)) {
+        $tpe[0] = null; // no plugin
       } else if (array_search('php', $tpe[1]) !== false) {
         $tpe[2] = 'php';
       } else if (isset($tpe[1][0]) && mb_strpos($tpe[1][0], '!') !== false) {
@@ -404,7 +446,7 @@ abstract class Minify {
       } else {
         $this->Msg('nop', $dst); // error encountered
       }
-    } else if ($src == $dst || @copy($src, $dst)) { // copy non-packing file
+    } else if ($src == $dst || !$this->set->cpy || @copy($src, $dst)) { // copy non-packing file
       ++$this->cnt[0];
     } else {
       $this->Msg('noc', $dst); // can't copy
@@ -420,13 +462,13 @@ abstract class Minify {
    */
 
   private function Minify($str, $tpe, $fle) {
-    $this->ans[$tpe[0]]['arr'][0] = $str;  // source string
-    $this->ans[$tpe[0]]['arr'][1]['fle'] = $fle;  // source file
-    $rlt = call_user_func_array($this->ans[$tpe[0]]['fnc'], $this->ans[$tpe[0]]['arr']);  // minify code
+    $this->pgs[$tpe[0]]['arr'][0] = $str;  // source string
+    $this->pgs[$tpe[0]]['arr'][1]['fle'] = $fle;  // source file
+    $rlt = call_user_func_array($this->pgs[$tpe[0]]['fnc'], $this->pgs[$tpe[0]]['arr']);  // minify code
     if (is_string($rlt) && $tpe[2]) {  // may contain php
-      $this->ans[$tpe[2]]['arr'][0] = $rlt;
-      $this->ans[$tpe[2]]['arr'][1]['fle'] = $fle;  // source file
-      $rlt = call_user_func_array($this->ans[$tpe[2]]['fnc'], $this->ans[$tpe[2]]['arr']);  // minify embedded code
+      $this->pgs[$tpe[2]]['arr'][0] = $rlt;
+      $this->pgs[$tpe[2]]['arr'][1]['fle'] = $fle;  // source file
+      $rlt = call_user_func_array($this->pgs[$tpe[2]]['fnc'], $this->pgs[$tpe[2]]['arr']);  // minify embedded code
     }
     if (is_string($rlt)) {  // minified ok
       ++$this->pks[$tpe[1]];
@@ -441,11 +483,8 @@ abstract class Minify {
     return $rlt;
   }
 
-  /**
-   * not implemented here
-   */
   protected function Obfuscate() {
-    
+    /* not implemented here */
   }
 
   /**
@@ -453,16 +492,16 @@ abstract class Minify {
    * @return string warning
    */
   protected function Request() {
-    $this->Msg('noe', $this->nms[2]); // no extension
+    $this->Msg('nof', $this->nms['cln']); // no extension
     return $this->rlt[1];
   }
 
   /**
-   * include the addons for the file type
+   * include the plugin for the file type
    * @param array $tpe -- [primary type,secondary types]
-   * @return bool -- true - loaded
+   * @return bool -- true - primary is loaded
    */
-  private function Addons($tpe) {
+  private function Plugin($tpe) {
     $flg = true;
     if (isset($tpe[1][0]) && mb_strpos($tpe[1][0], '!') !== false) {
       $t = array_shift($tpe[1]);
@@ -477,10 +516,10 @@ abstract class Minify {
       } else {
         $f = true;
       }
-      $nme = $this->nms[1] . mb_strtoupper($t); //class name
-      if (!$this->Loader($nme, $this->pth[1], $this->nms[0])) {
+      $nme = $this->nms['pck'] . mb_strtoupper($t); //class name
+      if (!$this->Loader($nme, $this->pth['pgs'], $this->nms['min'])) {
         $this->pks[$t] = null; //mark n/a
-        $flg = $f;
+        $flg = $flg && $f;
       }
     }
     return $flg;
@@ -585,14 +624,14 @@ abstract class Minify {
   private function Result($src, $dst) {
     list($ct, $cp) = $this->cnt;  // total and minified
     $this->Msg('ok', "'$src' => '$dst' ($cp/$ct)");
-    $sec = microtime(true) - $this->tme[0]; // elapsed secs
-    $this->tme = [$this->Date(), $sec]; // time started, elapsed
-    $d = ($this->cnt[3][0] - $this->cnt[3][1]) / $this->cnt[3][0];
+    $sec = microtime(true) - $this->tme; // elapsed secs
+    $tme = [$this->Date(), $sec]; // time started, elapsed
+    $d = $this->cnt[3][0] ? (($this->cnt[3][0] - $this->cnt[3][1]) / $this->cnt[3][0]) : 0;
     $this->cnt[3] = number_format(100 * $d, 0) . '%';
     ksort($this->pks);
     $this->cnt[] = $this->pks; // packed by type
     list($tot, $min, $lns, $cmr, $tps) = $this->cnt;
-    $str = "$this->sgr - {$this->txt[$this->rlt[0]]} {$this->tme[0]}"; // success message
+    $str = "{$this->set->sgr} {$tme[0]}"; // message header
     $str .= "\n{$this->txt['src']}: " . realpath($src);
     $str .= "\n{$this->txt['dst']}: " . realpath($dst);
     if ($this->lvl % 2 == 0 || !isset($tps['js'])) {
@@ -612,7 +651,8 @@ abstract class Minify {
     }
     $c = $tot - $min;
     if ($c > 0) {
-      $str .= "\n\t{$this->txt['cpy']}: $c";
+      $cc = $this->set->cpy ? 'cpy' : 'skp';
+      $str .= "\n\t{$this->txt[$cc]}: $c";
     }
     $o = $obf[0] + $obf[1];
     $str .= "\n{$this->txt['obf']}: $obf[0]+$obf[1]=$o";
@@ -638,7 +678,7 @@ abstract class Minify {
     $str .= "\n{$this->txt['lns']}: $lns";
     $str .= "\n{$this->txt['cmr']}: $cmr";
     $str .= "\n{$this->txt['tme']}: $t {$this->txt['sec']}";
-    $this->rlt[2] = [$this->cnt, $this->obs, $this->tme]; // save the counters
+    $this->rlt[2] = [$this->cnt, $this->obs, $tme]; // save the counters
     return $str;
   }
 
@@ -649,7 +689,7 @@ abstract class Minify {
   private function Date() {
     $z = date_default_timezone_get(); // save user zone
     date_default_timezone_set('UTC'); // work in utc
-    $d = date('Y-m-d H:i', $this->tme[0]) . ' UTC'; // timestamp
+    $d = date('Y-m-d H:i', $this->tme) . ' UTC'; // timestamp
     date_default_timezone_set($z); // restore user zone
     return $d;
   }
@@ -675,7 +715,7 @@ abstract class Minify {
       $t[0] .= ": $p";  // add details
     }
     $this->txt['err'] = implode("\n", $t);  // for inner use
-    $this->rlt[1] = "$this->sgr - " . $this->txt['err']; // save message
+    $this->rlt[1] = "{$this->set->sgr} - " . $this->txt['err']; // save message
     return $this->err;
   }
 
@@ -687,7 +727,7 @@ abstract class Minify {
       'dsi' => 'Illegal destination',
       'dse' => 'Destination exists',
       'sre' => 'Source is empty',
-      'noe' => ['Extension required',
+      'nof' => ['Missing add-on',
           'Visit http://vregistry.com'],
       'nop' => 'Cannot pack',
       'noc' => 'Cannot create',
@@ -699,7 +739,7 @@ abstract class Minify {
       'dst' => 'To',
       'fmt' => 'Files minified/total',
       'obf' => 'Files (js+php) obfuscated',
-      'irr' => 'Identifiers (php) registered/replaced',
+      'irr' => 'Identifiers (php) mapped/replaced',
       'vrs' => 'variables',
       'cns' => 'constants',
       'hds' => 'heredocs',
@@ -717,23 +757,15 @@ abstract class Minify {
 
 class PackApp extends Minify {
 
-  protected $ver = '0.1.0';
-  protected $tkn = 'Lte'; /* product token */
-  protected $opt = [  /* initial options */
-      'sgn' => '', /* signature: null - suppress */
-      'exf' => ['*.min.*'], /* files packing exclusion */
-      'sfx' => '_pkd',  /* default destination name suffix */
-      'aon' => [], /* user add-ons */
-      'arc' => 'zip',   /* archives type */
-      'tml' => 30  /*  time limit in seconds a script is allowed to run */
-      ];
-
+  protected $ver = '0.1.0'; /* version */
+  protected $lic = 'Try'; /* license */
+  
   /**
    * 
    * @param int $lvl -- obfuscation:
    *                      0|false - no
    *                      1|true - JS
-   * @param array $opt
+   * @param array $opt -- options
    */
   public function __construct($lvl = 0, $opt = []) {
     parent::__construct((int) $lvl, (array) $opt);
@@ -742,9 +774,9 @@ class PackApp extends Minify {
   /**
    * foreign action
    */
-  public static function Action() {
+  public static function Packer() {
     $obj = new PackApp(-1);
-    $rsp = str_replace("\n", '<br>', $obj->Request([], false)); // display in html
+    $rsp = str_replace("\n", '<br>', $obj->Request()); // display in html
     header("Content-Type: text/html; charset=utf-8");
     return $rsp;
   }
@@ -752,5 +784,5 @@ class PackApp extends Minify {
 }
 
 if (count(get_included_files()) == 1) {
-  echo PackApp::Action(); //called outside
+  echo PackApp::Packer(); //called outside
 }
