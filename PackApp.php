@@ -19,12 +19,13 @@ abstract class Minify {
   const FOL = 2;  /* folder mode */
   const ARC = 3;  /* archives mode */
 
-  protected $tit; /* program name */
+  protected $app; /* program name */
   protected $opt = [ /* initial options */
       'lvl' => 0,
       'src' => '',
       'dst' => '',
-      'sgn' => '', /* signature: false - suppress */
+      'sgr' => true,
+      'sgn' => '', /* signature: null - suppress */
       'exf' => ['*.min.*'], /* files packing exclusion */
       'cpy' => true, /* copy non-minified too */
       'sbd' => true, /* recurse sub-directories */
@@ -42,13 +43,13 @@ abstract class Minify {
   protected $set; /* processing settings */
   protected $pth = [];  /* paths: extension, plugins */
   protected $pgs = [];  /* plugins list: [type => ['fnc','arr'] */
-  protected $nms = ['ans' => 'addons', 'pgs' => 'plugins', 'min' => 'minify', 'pck' => 'Pack', 'srv' => 'S', 'ext' => 'E', 'cln' => ''];  /* names */
-  protected $ext = null; /* extension object */
+  protected $nms = ['ans' => 'addons', 'pgs' => 'plugins', 'min' => 'minify', 'pck' => 'Pack', 'srv' => 'S', 'obf' => 'O', 'cln' => ''];  /* names */
+  protected $obf = null; /* obfuscator object */
   protected $obs = [];  /* obfuscation counters */
   private $tzn; /* user timezone */
   private $cnt = [0, 0, 0, [0.0, 0.0]];   /* count of files total, minified files, total lines, total symbols */
   private $tme = [0, 60]; /* start time, default exec time / elapsed time */
-  private $smp = '';  /* packed content stamp */
+  private $sgr = ['', ''];  /* signatures: message, stamp */
   private $lgf = '';  /* log file */
   private $err = false; /* error flag */
   protected $rlt = ['', '', [], ''];     /* result data: token, short message, counters|html, details text */
@@ -61,16 +62,20 @@ abstract class Minify {
   public function __construct($lvl, $opt) {
     date_default_timezone_set(@date_default_timezone_get()); // define if not defined
     $this->lvl = $lvl;
-    $fle = __FILE__;  // base filename
-    $this->tit = basename($fle);
+    $app = __FILE__;  // apps filename
+    $this->app = basename($app);
     $this->tzn = date_default_timezone_get(); // save user zone
     date_default_timezone_set('UTC'); // work in utc
     $this->tme = microtime(true);
     $this->Options($opt);
+    $this->sgr[0] = "$this->app {$this->lic} {$this->ver}";  // messages signature
+    if ($this->set->sgn) { // prepend to php/js/css output
+      $this->sgr[1] = str_replace(['{app}', '{ver}', '{time}'], [$this->app, $this->ver, $this->Date(false)], $this->set->sgn); // stamp signature
+    }
     set_time_limit($this->set->tml);
-    $this->lgf = substr($fle, 0, -strlen(pathinfo($fle, PATHINFO_EXTENSION))) . 'log';
+    $this->lgf = substr($app, 0, -strlen(pathinfo($app, PATHINFO_EXTENSION))) . 'log';
     $this->tps[$this->set->arc] = null; /* add as valid filetype */
-    $pth = pathinfo($fle, PATHINFO_DIRNAME);  /* root path */
+    $pth = pathinfo($app, PATHINFO_DIRNAME);  /* root path */
     foreach (['ans', 'pgs'] as $p) {  // the paths 
       $this->pth[$p] = $pth . self::DS . $this->nms[$p]; // sub-dir
       if (!is_dir($this->pth[$p])) {
@@ -78,7 +83,7 @@ abstract class Minify {
       }
     }
     $this->Setup();
-    if (is_null($this->ext) && $lvl > 1) { // irrelevant level
+    if (is_null($this->obf) && $lvl > 1) { // irrelevant level
       $this->lvl = $lvl % 2;  // adjust level
     }
   }
@@ -89,9 +94,6 @@ abstract class Minify {
    */
   private function Options($opt) {
     $set = [];
-    if (array_key_exists('sgn', $opt) && is_null($opt['sgn'])) { // skipped
-      $this->opt['sgn'] = null;
-    }
     foreach ($this->opt as $key => $val) {  // loop defaults
       if (array_key_exists($key, $opt) && (!empty($opt[$key]) || empty($val) || is_bool($val) || is_array($val))) {  // user's value or allowed empty
         $val = $opt[$key];
@@ -106,16 +108,10 @@ abstract class Minify {
     if ($set['tml'] < $this->opt['tml'] || $set['tml'] > 60 * $this->opt['tml']) {  // out of limits
       $set['tml'] = $this->opt['tml']; // default time limit
     }
-    /* signature/stamp setting */
-    $set['sgr'] = "$this->tit v{$this->ver} {$this->lic}";
-    $this->opt['sgn'] = !is_null($set['sgn']);
-    if (!$set['sgn']) {
-      $set['sgn'] = "{$set['sgr']} {time}";
-    }
-    $this->opt['sgr'] = $set['sgn'];
-    $set['sgn'] = str_replace('{time}', $this->Date(), $set['sgn']);
-    if ($this->opt['sgn']) { // prepend to php/js/css output
-      $this->smp = '/*! ' . $set['sgn'] . ' */';
+    /* signature setting */
+    $this->opt['sgn'] = "{app} {time}";  // default
+    if (!array_key_exists('sgn', $opt)) { // skipped
+      $set['sgn'] = $this->opt['sgn'];
     }
     $this->set = (object) $set;
   }
@@ -124,6 +120,9 @@ abstract class Minify {
    * setup plugins and extension
    */
   private function Setup() {
+    if ($this->lvl % 2 == 1) {
+      $this->tps['js'] = [];  //no embeddings in obfuscated js
+    }
     $a = ['', []];
     foreach ($this->tps as $p => $f) {
       if (is_array($f)) {
@@ -149,11 +148,11 @@ abstract class Minify {
     }
     $this->nms['cln'] = pathinfo(__FILE__, PATHINFO_FILENAME) . $this->nms['srv'];  // server class
     $this->Server(); // connect server
-    $this->nms['cln'] = pathinfo(__FILE__, PATHINFO_FILENAME) . $this->nms['ext'];  // extension class
+    $this->nms['cln'] = pathinfo(__FILE__, PATHINFO_FILENAME) . $this->nms['obf'];  // extension class
     $this->Extend(); // extend functionality
-    if ($this->ext) {
-      $this->pgs['php']['arr'][1] = ['obn' => $this->ext, 'min' => !$this->set->dbg];  // obfuscate caller and minifying flag
-    } else if (is_null($this->ext)) {
+    if ($this->obf) {
+      $this->pgs['php']['arr'][1] = ['obn' => $this->obf, 'min' => !$this->set->dbg];  // obfuscate caller and minifying flag
+    } else if (is_null($this->obf)) {
       $this->nms['cln'] = pathinfo(__FILE__, PATHINFO_FILENAME) . $this->nms['srv'];  // missing class
     }
   }
@@ -237,7 +236,7 @@ abstract class Minify {
   }
 
   /**
-   * check source/destination names and extension, set mode
+   * check source/destination names and types, set mode
    * @param string $src 
    * @param string $dst 
    * @return mixed -- array - in/out modes
@@ -262,7 +261,7 @@ abstract class Minify {
     } else if (($mde == self::FIL && $exd != $exs) || /* file to unknown type */
             ($mde > self::FIL && $exd != $this->set->arc && !is_null($this->Match($exd)))) {  // non-file to known type
       $rlt = $this->Msg('dsi', $dst);  // invalid destination
-    } else if (!$this->ext && $this->lvl > 1) {
+    } else if (!$this->obf && $this->lvl > 1) {
       $rlt = $this->Msg('nof', $this->nms['cln']); // no extension
     } else {
       $rlt = [$mde];
@@ -272,6 +271,12 @@ abstract class Minify {
         $rlt[] = self::ARC;
       } else {
         $rlt[] = self::FOL;
+      }
+    }
+    if (isset($rlt[1]) && $rlt[0] == self::FOL) { //check folders' suitability
+      $d = $rlt[1] == self::FOL ? $dst : pathinfo($dst, PATHINFO_DIRNAME);
+      if ($d != $src && mb_strpos($d, $src . self::DS) === 0) {
+        $rlt = $this->Msg('dsi', $dst);  // source can't be destination's subdir
       }
     }
     return $rlt;
@@ -291,13 +296,13 @@ abstract class Minify {
     if (!$rlt) {// can't (un)arc
       if ($r[0] == 'noc' && !$flg) {
         $this->Remove($dst); // delete the remains
-      } else if ($r[0] == 'noa' && $flg) {
+      } else if ($r[0] == 'noz' && $flg) {
         @unlink($dst); //delete bad arc
       }
       $this->Msg($r[0], $r[1]);
     } else if ($flg && $r != $this->cnt[0]) {  // packed and arced files' counts are different
       @unlink($dst);
-      $this->Msg('noa', "$r/{$this->cnt[0]}");
+      $this->Msg('noz', "$r/{$this->cnt[0]}");
       $rlt = false;
     }
     return $rlt;
@@ -334,9 +339,9 @@ abstract class Minify {
     if ($zip->open($dst, ZipArchive::OVERWRITE) === true) {
       $rlt = $this->Zip($src, $zip);
       if (is_string($rlt)) {
-        $rlt = ['noa', $rlt]; // couldn't zip
+        $rlt = ['noz', $rlt]; // couldn't zip
       } else if ($rlt != $zip->numFiles) {
-        $rlt = ['noa', "$rlt/$zip->numFiles"]; // adding and zipping counts are different
+        $rlt = ['noz', "$rlt/$zip->numFiles"]; // adding and zipping counts are different
       } else {
         $rlt = $zip->numFiles;
       }
@@ -419,32 +424,38 @@ abstract class Minify {
         $tpe[0] = null; // no plugin
       } else if (array_search('php', $tpe[1]) !== false) {
         $tpe[2] = 'php';
-      } else if (isset($tpe[1][0]) && mb_strpos($tpe[1][0], '!') !== false) {
+      } else if (isset($tpe[1][0]) && mb_strpos($tpe[1][0], '!') === 0) {
         $tpe[0] = mb_substr($tpe[1][0], 1);
       }
       $tpe[1] = $t;
     }
     if ($tpe[0] && is_null($this->PackCheck(basename($src), $this->set->exf))) { // file to pack
       $str = @file_get_contents($src);
-      if (is_string($str)) {  // source obtained 
+      if ($str !== false) {  // source obtained 
         $lc = mb_substr_count($str, "\n") + 1;
         $lp = mb_strlen($str);
         $str = $this->Minify($str, $tpe, $dst);
         if (is_string($str)) {  // source is packed
           $la = mb_strlen($str);
-          $str = is_int(@file_put_contents($dst, $str));
+          if (@file_put_contents($dst, $str) === false) {
+            $str = ['noa', $dst];
+          }
+        } else if (is_array($str)) {
+          $str = ['sri', "$dst - $str[0]"]; // content error encountered
+        } else {
+          $str = ['nop', $dst]; // error encountered
         }
+      } else {
+        $str = ['noa', $src];
       }
-      if (is_array($str)) {
-        $this->Msg('sri', "$dst - $str[0]"); // content error encountered
-      } else if ($str) { // destination is saved
+      if (is_string($str)) {
         ++$this->cnt[0];
         ++$this->cnt[1];
         $this->cnt[2] += $lc;
         $this->cnt[3][0] += (float) $lp;
         $this->cnt[3][1] += (float) $la;
-      } else {
-        $this->Msg('nop', $dst); // error encountered
+      } else if (is_array($str)) {
+        $this->Msg($str[0], $str[1]); // error encountered
       }
     } else if ($src == $dst || !$this->set->cpy || @copy($src, $dst)) { // copy non-packing file
       ++$this->cnt[0];
@@ -472,12 +483,24 @@ abstract class Minify {
     }
     if (is_string($rlt)) {  // minified ok
       ++$this->pks[$tpe[1]];
-      if ($this->smp && ($tpe[0] == 'css' || $tpe[0] == 'js')) {
-        $rlt = $this->smp . $rlt; // prepend the signature
-      } else if ($this->smp && mb_strpos($rlt, '<?php  ?>') === 0) {
-        $rlt = "<?php $this->smp ?>" . mb_substr($rlt, mb_strlen('<?php  ?>')); // replace empty php tag with a signature
-      } else if ($tpe[0] == 'php' && ($rlt == '' || $this->smp)) {  // empty result or signature
-        $rlt = "<?php $this->smp ?>" . $rlt; // prepend php signature
+      $p = '<?php  ?>';
+      if (($tpe[0] == 'php' || $tpe[2] == 'php') && mb_strpos($rlt, $p) === 0) {
+        $rlt = mb_substr($rlt, mb_strlen($p)); // empty php tag
+        if (empty($rlt)) {
+          $rlt = $p;
+        }
+      }
+      if ($this->sgr[1]) {   // signature specified
+        if ($tpe[0] == 'css' || $tpe[0] == 'js') {
+          $s = '/*#*/';
+        } else if ($tpe[0] == 'php') {
+          $s = '<?php /*#*/ ?>';
+        } else {
+          $s = '';
+        }
+        if ($s) {
+          $rlt = str_replace('#', $this->sgr[1], $s) . $rlt; // prepend the signature
+        }
       }
     }
     return $rlt;
@@ -492,7 +515,7 @@ abstract class Minify {
    * @return string warning
    */
   protected function Request() {
-    $this->Msg('nof', $this->nms['cln']); // no extension
+    $this->Msg('nof', $this->nms['cln']); // no module
     return $this->rlt[1];
   }
 
@@ -625,13 +648,13 @@ abstract class Minify {
     list($ct, $cp) = $this->cnt;  // total and minified
     $this->Msg('ok', "'$src' => '$dst' ($cp/$ct)");
     $sec = microtime(true) - $this->tme; // elapsed secs
-    $tme = [$this->Date(), $sec]; // time started, elapsed
+    $tme = [$this->Date(true), $sec]; // time started, elapsed
     $d = $this->cnt[3][0] ? (($this->cnt[3][0] - $this->cnt[3][1]) / $this->cnt[3][0]) : 0;
     $this->cnt[3] = number_format(100 * $d, 0) . '%';
     ksort($this->pks);
     $this->cnt[] = $this->pks; // packed by type
     list($tot, $min, $lns, $cmr, $tps) = $this->cnt;
-    $str = "{$this->set->sgr} {$tme[0]}"; // message header
+    $str = "{$this->sgr[0]} $tme[0]"; // message header
     $str .= "\n{$this->txt['src']}: " . realpath($src);
     $str .= "\n{$this->txt['dst']}: " . realpath($dst);
     if ($this->lvl % 2 == 0 || !isset($tps['js'])) {
@@ -684,12 +707,17 @@ abstract class Minify {
 
   /**
    * startup date
+   * $param bool $flg -- true - formatted
    * @return string
    */
-  private function Date() {
+  private function Date($flg) {
     $z = date_default_timezone_get(); // save user zone
     date_default_timezone_set('UTC'); // work in utc
-    $d = date('Y-m-d H:i', $this->tme) . ' UTC'; // timestamp
+    if ($flg) {
+      $d = date('Y-m-d H:i', $this->tme) . ' UTC'; // timestamp
+    } else {
+      $d = date('Y-m-d H:i:s', $this->tme);
+    }
     date_default_timezone_set($z); // restore user zone
     return $d;
   }
@@ -715,7 +743,7 @@ abstract class Minify {
       $t[0] .= ": $p";  // add details
     }
     $this->txt['err'] = implode("\n", $t);  // for inner use
-    $this->rlt[1] = "{$this->set->sgr} - " . $this->txt['err']; // save message
+    $this->rlt[1] = "{$this->sgr[0]} - {$this->txt['err']}"; // save message
     return $this->err;
   }
 
@@ -729,10 +757,11 @@ abstract class Minify {
       'sre' => 'Source is empty',
       'nof' => ['Missing add-on',
           'Visit http://vregistry.com'],
+      'noa' => "Can't access",
       'nop' => 'Cannot pack',
       'noc' => 'Cannot create',
       'nob' => 'Cannot obfuscate',
-      'noa' => 'Unsuccessful archiving',
+      'noz' => 'Unsuccessful archiving',
       'lns' => 'Lines processed',
       'cmr' => 'Compression ratio',
       'src' => 'From',
@@ -757,8 +786,8 @@ abstract class Minify {
 
 class PackApp extends Minify {
 
-  protected $ver = '0.1.0'; /* version */
-  protected $lic = 'Try'; /* license */
+  public $ver = '0.1.0'; /* version */
+  public $lic = 'Try'; /* license */
   
   /**
    * 
