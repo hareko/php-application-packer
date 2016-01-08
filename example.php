@@ -23,8 +23,8 @@ $old = 'tests'; // source folder
 $new = 'tests.zip'; // destination zipped
 
 /* js and php obfuscation; maximum replacement of the PHP identifiers except 'vv' identifier; defined constants can be case-insensitive */
-$obj = new PackApp(1, ['ids' => 'VdHFTC', 'exi' => ['vv'], 'log' => 1]); // instantiate
-$rlt = $obj->Pack($old, $new, false);  // pack the source and get result data; replace existing data
+$obj = new PackApp(3, ['ids' => 'VdHFTC', 'exi' => ['vv']]); // instantiate
+$rlt = $obj->Pack($old, $new, true);  // pack the source and get result data; replace existing data
 
 header('Content-Type: text/html; charset=utf-8');
 if (is_string($rlt['factor'])) {
