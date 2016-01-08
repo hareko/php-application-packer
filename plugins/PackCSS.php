@@ -33,8 +33,8 @@ class PackCSS {
       unset($opts['mth']);
     }
     if (!empty($opts['fle'])) {
-      self::$fle[1] = self::$fle[0] != $opts['fle'];//file change
-      self::$fle[0] = $opts['fle'];//filename
+      self::$fle[1] = self::$fle[0] != $opts['fle']; //file change
+      self::$fle[0] = $opts['fle']; //filename
     }
   }
 
@@ -47,13 +47,16 @@ class PackCSS {
       $c = preg_replace('!/\*[^*]*\*+([^/][^*]*\*+)*/!', '', $css);  /* remove comments */
       $rlt = str_replace(array("\r\n", "\r", "\n", "\t", '  ', '    ', '    '), '', $c); /* remove tabs, spaces, newlines, etc. */
     } else {
-      $min = new CSSmin(true, false);
+      $min = new CSSmin(true, false); //YUI Compressor
       $rlt = $min->run($css);
+      if (strpos($rlt, CSSmin::COMMENT)) {
+        $rlt = false; //bad source
+      }
     }
-    if (self::$fle[1]) {  
-      ++self::$cnt[0];//new call
+    if (self::$fle[1]) {
+      ++self::$cnt[0]; //new call
     }
-    ++self::$cnt[1];// sequent call
+    ++self::$cnt[1]; // sequent call
     return $rlt;
   }
 
@@ -739,9 +742,10 @@ class CSSmin {
    * @return int
    */
   private function index_of($haystack, $needle, $offset = 0) {
-    $index = strpos($haystack, $needle, $offset);
-
-    return ($index !== FALSE) ? $index : -1;
+    /*    $index = strpos($haystack, $needle, $offset);
+      return ($index !== FALSE) ? $index : -1; */
+    $index = @strpos($haystack, $needle, $offset);  //VR maybe $offset > strlen($haystack) 
+    return is_int($index) ? $index : -1;
   }
 
   /**
