@@ -16,7 +16,7 @@ The ZIP archives are handled also: folder-to-zip, zip-to-folder, zip-to-zip.
 
 The Packer passes the source to according minify plugin depending on the file type.
 The *css* and *js* that detected inside the *html* are minified too. 
-The *html*, *css* and *js* are looked for the embedded *php* to minify. 
+The *html*, *css* and *js* are looked for the embedded *php* to minify (except obfuscated *js*). 
 You can create the user plugins for more file types.
 
 The *js* and *php* code can be obfuscated to inhibit its unauthorized use. The reverse engineering of the packed code becomes too expensive.
@@ -66,12 +66,15 @@ B) Instantiation and invocation:
 
 **$opt** - the options array:
 
-- **sgn** - signature to prepend to the minified *php/js/css* code (default by *PackApp*, specify *null* to omit)
 - **exf** - array of the folder/file name wildcards to exclude from the packing (default by *['\*.min.\*']*)
 - **sbd** - recurse sub-directories (default by *true*)
 - **cpy** - copy non-minified files (default by *true*)
 - **pgn** - user plugins (see below)
 - **sfx** - default destination name suffix (default by *'_pkd'*)
+- **sgn** - signature to prepend to the minified *php/js/css* code (specify empty value to suppress the default); the replacements:
+    - *{app}* - Packer name;
+    - *{ver}* - Packer version;
+    - *{time}* - current UTC time;
 - **tml** - time limit in seconds the program is allowed to run (for larger projects, default by *30*)
 - **log** - logging level number: 0 - no, 1 - ok only, 2 - all (default by *0*)
 
@@ -162,7 +165,7 @@ Please [contact] if you would like to include your own plugin(s) into the packag
 
 ## PHP obfuscation ##
 
-The standard edition with the *PackAppE* add-on is required for the PHP obfuscation. It's recommended to follow certain naming rules in the planning and coding stage already to avoid the renaming conflicts (see below). 
+The standard edition with the *PackAppO* add-on is required for the PHP obfuscation. It's recommended to follow certain naming rules in the planning and coding stage already to avoid the renaming conflicts (see below). 
 
 The *php* source is processed in two passes. 1st pass registers the identifiers found from the code during the minifying.
 2nd pass performs cross-file renaming of the identifiers registered by 1st pass. 
@@ -208,9 +211,10 @@ Make a copy from the *example.php* and try it with different sources, destinatio
 
 ### Updates ###
 
-The extended version supplies the version updates. The *About* section of the UI shell displays the installation and update information and allows to edit your contact data. Run *PackApp.php* from the browser and click the *Update* button to check for the updates directly.
+The extended version supplies the version updates. The *About* section of the UI shell displays the installation and update information and allows to edit your contact data. Run *PackApp.php* from the browser and click the *Update* button to check for the updates directly. Your contact data will be used for important product-related messages only. If your contacts change, please edit.
 
-Your contact data will be used for important product-related messages only. If your contacts change, please update.
+If the updating fails on any reason then the *update.php* and *update.json* files created allow to restore - run *update.php*.
+
 
 ## The package ##
 
@@ -219,7 +223,7 @@ The *plugins* folder contains the minifiers adapted from the open source. The *a
 - *PackApp.php* - applications packer class
 - *PackApp.log* - packer log (created dynamically) 
 - *addons/.htaccess* - deny access from outside
-- *addons/PackAppE.php* - obfuscation extension class
+- *addons/PackAppO.php* - obfuscation extension class
 - *addons/PackAppS.php* - services class
 - *addons/PackAppS.json* - setup data (created dynamically)
 - *plugins/PackCSS.php* - stylesheets minifier class by [Tubal Martin]
