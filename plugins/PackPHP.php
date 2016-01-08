@@ -134,9 +134,9 @@ class PackPHP {
             $new .= $ts;
             $iw = true;
           } elseif ($tn == T_CONSTANT_ENCAPSED_STRING || $tn == T_ENCAPSED_AND_WHITESPACE) {
-            if ($ts[0] == '"') {
-//VR              $ts = addcslashes($ts, "\n\t\r");
-            }
+            /*            if ($ts[0] == '"') {
+              $ts = addcslashes($ts, "\n\t\r"); //VR
+              } */
             $new .= $ts;
             $iw = true;
           } elseif ($tn == T_WHITESPACE) {
