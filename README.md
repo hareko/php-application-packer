@@ -24,13 +24,13 @@ The identifiers replacement algorithm used by the Packer is more protective than
 However, you must follow certain naming rules to avoid the renaming conflicts. The *php* obfuscation is supported by the standard edition.
 
 There are several options to control the processing. Use them for specific cases and rely on defaults mostly. 
-Launch the Packer via the UI shell or instantiate and call directly. Various statistics are returned about the processing results. You can display and/or save this data.
+Launch the Packer via the GUI or instantiate and call directly. Various statistics are returned about the processing results. You can display and/or save this data.
 
 ## Versioning ##
 
 The Packer has the free and extended versions. Free version minifies the source and can be launched via instantiation only. 
 
-Extended version includes also the UI shell and requires the setup (license registration) before using. The extended version has the following editions:
+Extended version includes also the GUI and requires the setup (license registration) before using. The extended version has the following editions:
 
 - PackApp Lte - lite edition; minifies the source (html, css, js, json, php, xml) and obfuscates the JavaScript code.
 - PackApp Std - standard edition; supplies the lite functionality and obfuscates the PHP code.
@@ -39,13 +39,13 @@ You can obtain the extended version from [here].
 
 ## The usage ##
 
-The program requires PHP 5.3+. Start it from your script via UI shell (except free version) or instantiation (see *The package*). 
+The program requires PHP 5.3+. Start it from your script via GUI (except free version) or instantiation (see *The package*). 
 
 The starter script must be in the same directory with the *PackApp.php*: 
 
 **require('PackApp.php');**
 
-A) Launching the UI:
+A) Launching the GUI:
 
 **echo PackApp::Packer();**
 
@@ -111,8 +111,7 @@ You can display and/or save the statistics. See *example.php* about the using.
 
 ## Packing ##
 
-The files are minified by default and obfuscated (*js, php*) if required.
-The source file is processed when its type matches one of the following (wildcards allowed);
+The files are minified by default and obfuscated (*js, php*) if required. The php templates are packed for the *html, js, css, php*. The source file is processed when its type matches one of the following (wildcards allowed);
 
 - *\*htm\** - html code (*htm, html, phtml,* ...) 
 - *css\** - stylesheet
@@ -207,11 +206,11 @@ Run *PackApp.php* from the browser to launch the installer directly.
 The included example minifies/obfuscates the files from the *tests* folder and compresses the result into the *tests.zip*. 
 A message informs about the result. The statistics collected by the packer are displayed and saved into *example.txt*. 
 
-Make a copy from the *example.php* and try it with different sources, destinations and options. Run *index.php* to launch the UI shell supplied by extended version.
+Make a copy from the *example.php* and try it with different sources, destinations and options. Run *index.php* to launch the GUI supplied by extended version.
 
 ### Updates ###
 
-The extended version supplies the version updates. The *About* section of the UI shell displays the installation and update information and allows to edit your contact data. Run *PackApp.php* from the browser and click the *Update* button to check for the updates directly. Your contact data will be used for important product-related messages only. If your contacts change, please edit.
+The extended version supplies the version updates. The *About* section of the GUI displays the installation and update information and allows to edit your contact data. Run *PackApp.php* from the browser and click the *Update* button to check for the updates directly. Your contact data will be used for important product-related messages only. If your contacts change, please edit.
 
 If the updating fails on any reason then the *update.php* and *update.json* files created allow to restore - run *update.php*.
 
@@ -225,7 +224,7 @@ The *plugins* folder contains the minifiers adapted from the open source. The *a
 - *addons/.htaccess* - deny access from outside
 - *addons/PackAppO.php* - obfuscation extension class
 - *addons/PackAppS.php* - services class
-- *addons/PackAppS.json* - setup data (created dynamically)
+- *addons/PackAppS.json* - configuration settings
 - *plugins/PackCSS.php* - stylesheets minifier class by [Tubal Martin]
 - *plugins/PackHTM.php* - html's minifier class by [Stephen Clay]
 - *plugins/PackJS.php* - js minifier class by [Ryan Grove] and js compressor class by [Nicolas Martin] (originally by *Dean Edwards*)
@@ -234,7 +233,7 @@ The *plugins* folder contains the minifiers adapted from the open source. The *a
 - *plugins/PackXML.php* - xml minifier class by [Vallo Reima]
 - *tests/test.\** - test folders/files for the usage sample
 - *example.php* - instantiation sample script
-- *index.php* - UI shell starter script (except free version)
+- *index.php* - GUI starter script (except free version)
 
 Special thanks to the authors referred. Please [contact] for any questions regarding the Packer.
 
