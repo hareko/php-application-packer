@@ -228,7 +228,7 @@ The *plugins* folder contains the minifiers adapted from the open source. The *a
 - *plugins/PackCSS.php* - stylesheets minifier class by [Tubal Martin]
 - *plugins/PackHTM.php* - html's minifier class by [Stephen Clay]
 - *plugins/PackJS.php* - js minifier class by [Ryan Grove] and js compressor class by [Nicolas Martin] (originally by *Dean Edwards*)
-- *plugins/PackJSON.php* - json minifier class by [Tiste]
+- *plugins/PackJSON.php* - json minifier class by [Tiste] (originally by [Kyle Simpson])
 - *plugins/PackPHP.php* - php minifier class, adjusted from the algorithm by [GelaMu]
 - *plugins/PackXML.php* - xml minifier class by [Vallo Reima]
 - *tests/test.\** - test folders/files for the usage sample
@@ -244,5 +244,6 @@ Special thanks to the authors referred. Please [contact] for any questions regar
 [Nicolas Martin]: http://joliclic.free.fr/php/javascript-packer/en/
 [Ryan Grove]: https://github.com/rgrove/jsmin-php
 [Tiste]: https://github.com/T1st3/php-json-minify
+[Kyle Simpson]: https://github.com/getify
 [GelaMu]: http://php.net/manual/en/function.php-strip-whitespace.php
 [Vallo Reima]: https://github.com/hareko/php-merge-xml
