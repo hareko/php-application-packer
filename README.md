@@ -223,7 +223,7 @@ The *plugins* folder contains the minifiers adapted from the open source. The *a
 - *PackApp.log* - packer log (created dynamically) 
 - *addons/.htaccess* - deny access from outside
 - *addons/PackAppO.php* - obfuscation extension class
-- *addons/PackAppS.php* - services class
+- *addons/PackAppS.php* - services class 
 - *addons/PackAppS.json* - configuration settings
 - *plugins/PackCSS.php* - stylesheets minifier class by [Tubal Martin]
 - *plugins/PackHTM.php* - html's minifier class by [Stephen Clay]
