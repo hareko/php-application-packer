@@ -227,7 +227,7 @@ The *plugins* folder contains the minifiers adapted from the open source. The *a
 - *addons/PackAppS.json* - configuration settings
 - *plugins/PackCSS.php* - stylesheets minifier class by [Tubal Martin]
 - *plugins/PackHTM.php* - html's minifier class by [Stephen Clay]
-- *plugins/PackJSON.php* - json minifier class by [Tiste] by [Kyle Simpson]
+- *plugins/PackJSON.php* - json minifier class by [Tiste] (originally by [Kyle Simpson])
 - *plugins/PackJS.php* - js minifier class by [Ryan Grove] and js compressor class by [Nicolas Martin] (originally by *Dean Edwards*)
 - *plugins/PackPHP.php* - php minifier class, adjusted from the algorithm by [GelaMu]
 - *plugins/PackXML.php* - xml minifier class by [Vallo Reima]
