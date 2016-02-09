@@ -1,0 +1,19 @@
+{
+    "name": "vregistry/packapp",
+    "type": "library",
+    "description": "Create packages of project files for distribution by minifying, obfuscating, zipping the source code",
+    "keywords": ["minify","minifying","obfuscate","obfuscating"],
+    "homepage": "https://github.com/hareko/php-application-packer",
+    "license": "BSD",
+    "authors": [
+        {
+            "name": "Vallo Reima",
+            "email": "vallo@vregistry.com",
+            "homepage": "http://vregistry.com",
+            "role": "Developer"
+        }
+    ],
+    "require": {
+        "php": ">=5.3.0"
+    }
+}
