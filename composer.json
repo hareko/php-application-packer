@@ -1,8 +1,8 @@
 {
-    "name": "vregistry/packapp",
+    "name": "vregistry/minify-obfuscate-zip",
     "type": "library",
-    "description": "Create packages of project files for distribution by minifying, obfuscating, zipping the source code",
-    "keywords": ["minify","minifying","obfuscate","obfuscating"],
+    "description": "PackApp.php utility to create packages of project files for distribution by minifying, obfuscating, zipping the source code",
+    "keywords": ["minify","minifier","minifying","minifier","obfuscate","obfuscator","obfuscating"],
     "homepage": "https://github.com/hareko/php-application-packer",
     "license": "BSD",
     "authors": [
@@ -14,7 +14,6 @@
         }
     ],
     "require": {
-        "php": ">=5.3.0",
-        "vregistry/packapp": "0.1.*"
+        "php": ">=5.3.0"
     }
 }
