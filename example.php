@@ -9,8 +9,9 @@
  * @author Vallo Reima
  * @copyright (C)2015
  */
-if (version_compare(PHP_VERSION, '5.3', '<')) {
-  die('PHP 5.3+ version is required');
+$ver = '5.4'; /* required PHP */
+if (version_compare(PHP_VERSION, $ver, '<')) {
+  die("PHP $ver+ version is required");
 } else {
   error_reporting(E_ALL | E_STRICT);
   ini_set('display_errors', true);
