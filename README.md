@@ -39,7 +39,7 @@ You can obtain the extended version from [here].
 
 ## The usage ##
 
-The program requires PHP 5.3+. Start it from your script via GUI (except free version) or instantiation (see *The package*). 
+The program requires PHP 5.4+. Start it from your script via GUI (except free version) or instantiation (see *The package*). 
 
 The starter script must be in the same directory with the *PackApp.php*: 
 
