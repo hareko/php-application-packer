@@ -57,12 +57,12 @@ B) Instantiation and invocation:
 
 ### The parameters ###
 
-**$lvl** - obfuscation level integer (default by 0 - minify only):
+**$lvl** - processing level, the sum of the following integers:
 
-- *0* - no
-- *1* - JavaScript
-- *2* - PHP
-- *3* - both
+- *0* - minify (default)
+- *1* - encode JS (Base62, shrink variables)
+- *2* - obfuscate PHP (replace identifiers)
+- *4* - compact CSS (remove excessive data)
 
 **$opt** - the options array:
 
@@ -111,7 +111,8 @@ You can display and/or save the statistics. See *example.php* about the using.
 
 ## Packing ##
 
-The files are minified by default and obfuscated (*js, php*) if required. The php templates are packed for the *html, js, css, php*. The source file is processed when its type matches one of the following (wildcards allowed);
+The files are minified by default and obfuscated (*js, php*) if required. The php templates are packed for the *html, js, css, php*.
+The source file is processed when its type matches one of the following (wildcards allowed);
 
 - *\*htm\** - html code (*htm, html, phtml,* ...) 
 - *css\** - stylesheet
@@ -206,7 +207,7 @@ Run *PackApp.php* from the browser to launch the installer directly.
 The included example minifies/obfuscates the files from the *tests* folder and compresses the result into the *tests.zip*. 
 A message informs about the result. The statistics collected by the packer are displayed and saved into *example.txt*. 
 
-Make a copy from the *example.php* and try it with different sources, destinations and options. Run *index.php* to launch the GUI supplied by extended version.
+Make a copy from the *example.php* and try it with different sources, destinations and options. Run *index.php* to launch the GUI supplied by an extended version.
 
 ### Updates ###
 
@@ -223,12 +224,12 @@ The *plugins* folder contains the minifiers adapted from the open source. The *a
 - *PackApp.log* - packer log (created dynamically) 
 - *addons/.htaccess* - deny access from outside
 - *addons/PackAppO.php* - obfuscation extension class
-- *addons/PackAppS.php* - services class 
+- *addons/PackAppS.php* - services class
 - *addons/PackAppS.json* - configuration settings
 - *plugins/PackCSS.php* - stylesheets minifier class by [Tubal Martin]
 - *plugins/PackHTM.php* - html's minifier class by [Stephen Clay]
-- *plugins/PackJSON.php* - json minifier class by [Tiste], originally by [Kyle Simpson]
 - *plugins/PackJS.php* - js minifier class by [Ryan Grove] and js compressor class by [Nicolas Martin], originally by *Dean Edwards*
+- *plugins/PackJSON.php* - json minifier class by [Tiste], originally by [Kyle Simpson]
 - *plugins/PackPHP.php* - php minifier class, adjusted from the algorithm by [GelaMu]
 - *plugins/PackXML.php* - xml minifier class by [Vallo Reima]
 - *tests/test.\** - test folders/files for the usage sample
@@ -247,3 +248,7 @@ Special thanks to the authors referred. Please [contact] for any questions regar
 [Kyle Simpson]: https://github.com/getify
 [GelaMu]: http://php.net/manual/en/function.php-strip-whitespace.php
 [Vallo Reima]: https://github.com/hareko/php-merge-xml
+
+## ChangeLog ##
+15 Aug 2016
+- Compact CSS option (either Reinhold-Weber or YUICompressor method)
