@@ -5,7 +5,7 @@
  * Pack the PHP Application files
  * 
  * Requirements:
- *  PHP 5.3+ with mbstring, zip
+ *  PHP 5.4+ with mbstring, zip
  *  Dependencies: plugins - PackCSS, PackHTM, PackJS, PackJSON, PackPHP, PackXML
  *
  * @package Packer
@@ -61,7 +61,6 @@ abstract class Minify {
    */
   public function __construct($lvl, $opt) {
     date_default_timezone_set(@date_default_timezone_get()); // define if not defined
-    $this->lvl = $lvl;
     $app = __FILE__;  // apps filename
     $this->app = basename($app);
     $this->tzn = date_default_timezone_get(); // save user zone
@@ -82,10 +81,7 @@ abstract class Minify {
         $this->pth[$p] = dirname($pth) . self::DS . $this->nms[$p]; // sibling dir
       }
     }
-    $this->Setup();
-    if (is_null($this->obf) && $lvl > 1) { // irrelevant level
-      $this->lvl = $lvl % 2;  // adjust level
-    }
+    $this->lvl = $this->Setup($lvl);
   }
 
   /**
@@ -118,9 +114,11 @@ abstract class Minify {
 
   /**
    * setup plugins and extension
+   * @param int $lvl
+   * @return int level
    */
-  private function Setup() {
-    if ($this->lvl % 2 == 1) {
+  private function Setup($lvl) {
+    if ($lvl % 2 == 1) {
       $this->tps['js'] = [];  //no embeddings in obfuscated js
     }
     $a = ['', []];
@@ -141,9 +139,15 @@ abstract class Minify {
       }
     }
     $this->pgs['js']['arr'][1] = ['mth' => ''];  // default minify method
-    $this->pgs['css']['arr'][1] = ['mth' => ''];  // RW is alternative
+    if ($lvl > 3) {
+      $lvl -= 4;
+      $m = '';  //compact mode
+    } else {
+      $m = 'RW';  //simplified
+    }
+    $this->pgs['css']['arr'][1] = ['mth' => $m];  // minify method
     $this->pgs['htm']['arr'][1] = ['jsMinifier' => $this->pgs['js'], 'cssMinifier' => $this->pgs['css']]; // callbacks
-    if ($this->lvl % 2 == 1) {
+    if ($lvl % 2 == 1) {
       $this->pgs['js']['arr'][1]['mth'] = 'O';  //obfuscate
     }
     $this->nms['cln'] = pathinfo(__FILE__, PATHINFO_FILENAME) . $this->nms['srv'];  // server class
@@ -155,6 +159,10 @@ abstract class Minify {
     } else if (is_null($this->obf)) {
       $this->nms['cln'] = pathinfo(__FILE__, PATHINFO_FILENAME) . $this->nms['srv'];  // missing class
     }
+    if (is_null($this->obf) && $lvl > 1) { // irrelevant level
+      $lvl = $lvl % 2;  // adjust level
+    }
+    return $lvl;
   }
 
   protected function Server() {
@@ -173,17 +181,19 @@ abstract class Minify {
    * @return array
    */
   public function Pack($old, $new = '', $rpl = false) {
-    $src = rtrim(str_replace('/', self::DS, (string) $old), self::DS);  // normalize 
+    ob_start(); //collect the echoes
+    $src = rtrim(str_replace(['/', "\\"], self::DS, (string) $old), self::DS);  // normalize 
     if ($new) {
-      $dst = rtrim(str_replace('/', self::DS, (string) $new), self::DS);
+      $dst = rtrim(str_replace(['/', "\\"], self::DS, (string) $new), self::DS);
     } else {
       $dst = $this->Destination($src);  // take default name 
     }
-    if (!$this->err) {  // mode set
-      $tmp = sys_get_temp_dir() . self::DS . uniqid($this->set->arc); // temporary (un)packing folder
-      $mde = $this->Mode($src, $dst);
+    if (!$this->err && !$this->obf && $this->lvl > 1) {  // mode set
+      $this->Msg('nof', $this->nms['cln']); // no extension
     }
+    $mde = $this->err ? false : $this->Mode($src, $dst);
     if (!$this->err) {  // mode ok
+      $tmp = sys_get_temp_dir() . self::DS . uniqid($this->set->arc); // temporary (un)packing folder
       if (!$rpl && file_exists($dst)) {
         $this->Msg('dse', basename($dst)); // don't replace
       } else if ($mde[0] == self::FIL) {
@@ -211,11 +221,12 @@ abstract class Minify {
         $this->Msg('sre', $src); // no source file(s)
       }
     }
+    $err = ob_get_clean();
     date_default_timezone_set($this->tzn);  // restore user time
     if ($this->err) {  // error encountered
       $this->rlt[3] = $this->rlt[1];
     } else { // success
-      $this->rlt[3] = $this->Result($src, $dst);
+      $this->rlt[3] = $this->Result($src, $dst, $err);
     }
     $a = explode(' - ', $this->rlt[1]);
     $c = array_pop($a);
@@ -228,7 +239,10 @@ abstract class Minify {
       $this->rlt[1] = explode(':', array_shift($b));
       $this->rlt[1] = array_merge($this->rlt[1], $b);
       if (!$this->err || $this->rlt[0] == 'dse') {
-        array_push($this->rlt[1], $dst, $src);  // pass to shell
+        array_push($this->rlt[1], $src, $dst);  // pass to shell
+      }
+      if (is_string($mde)) {
+        $this->rlt[0] = $mde;
       }
     }
     $rlt = ['code' => $this->rlt[0], 'prompt' => $this->rlt[1], 'factor' => $this->rlt[2], 'string' => $this->rlt[3]];
@@ -236,13 +250,32 @@ abstract class Minify {
   }
 
   /**
+   * form destination pathed name
+   * @param string $src name
+   * @return string
+   */
+  private function Destination($src) {
+    $a = explode(self::DS, $src);
+    $c = array_pop($a);
+    $n = mb_strrpos($c, '.');
+    if ($n) { // insert token
+      array_push($a, substr($c, 0, $n) . $this->set->sfx . substr($c, $n));
+      $r = implode(self::DS, $a);
+    } else {  // append token 
+      $r = $src . $this->set->sfx;
+    }
+    return $r;
+  }
+
+  /**
    * check source/destination names and types, set mode
    * @param string $src 
    * @param string $dst 
    * @return mixed -- array - in/out modes
+   *                  string - bad src|dst
    *                  bool - error
    */
-  private function Mode($src, $dst) {
+  public function Mode($src, $dst) {
     $exs = mb_strtolower(pathinfo($src, PATHINFO_EXTENSION)); // source name extension 
     if (is_dir($src)) {
       $mde = self::FOL; // folder 
@@ -257,12 +290,12 @@ abstract class Minify {
     }
     $exd = mb_strtolower(pathinfo($dst, PATHINFO_EXTENSION)); // dest name extension 
     if (is_string($mde)) {  // invalid source
-      $rlt = $this->Msg($mde, $src);
+      $rlt = 'src';
+      $this->Msg($mde, $src);
     } else if (($mde == self::FIL && $exd != $exs) || /* file to unknown type */
             ($mde > self::FIL && $exd != $this->set->arc && !is_null($this->Match($exd)))) {  // non-file to known type
-      $rlt = $this->Msg('dsi', $dst);  // invalid destination
-    } else if (!$this->obf && $this->lvl > 1) {
-      $rlt = $this->Msg('nof', $this->nms['cln']); // no extension
+      $rlt = 'dst';
+      $this->Msg('dsi', $dst);  // invalid destination
     } else {
       $rlt = [$mde];
       if ($mde == self::FIL) {  // destination mode
@@ -276,7 +309,8 @@ abstract class Minify {
     if (isset($rlt[1]) && $rlt[0] == self::FOL) { //check folders' suitability
       $d = $rlt[1] == self::FOL ? $dst : pathinfo($dst, PATHINFO_DIRNAME);
       if ($d != $src && mb_strpos($d, $src . self::DS) === 0) {
-        $rlt = $this->Msg('dsi', $dst);  // source can't be destination's subdir
+        $rlt = 'dst';
+        $this->Msg('dsi', $dst);  // source can't be destination's subdir
       }
     }
     return $rlt;
@@ -289,7 +323,7 @@ abstract class Minify {
    * @param bool $flg -- true - compact
    * @return bool
    */
-  private function Archives($src, $dst, $flg) {
+  public function Archives($src, $dst, $flg) {
     $mth = 'Pack' . ucfirst(mb_strtolower($this->set->arc)) . ($flg ? 'C' : 'U'); // archiving method
     $r = $this->$mth($src, $dst);
     $rlt = is_int($r);
@@ -300,7 +334,7 @@ abstract class Minify {
         @unlink($dst); //delete bad arc
       }
       $this->Msg($r[0], $r[1]);
-    } else if ($flg && $r != $this->cnt[0]) {  // packed and arced files' counts are different
+    } else if ($flg === true && $r != $this->cnt[0]) {  // packed and arced files' counts are different
       @unlink($dst);
       $this->Msg('noz', "$r/{$this->cnt[0]}");
       $rlt = false;
@@ -568,24 +602,6 @@ abstract class Minify {
   }
 
   /**
-   * form destination pathed name
-   * @param string $src name
-   * @return string
-   */
-  private function Destination($src) {
-    $a = explode(self::DS, $src);
-    $c = array_pop($a);
-    $n = mb_strrpos($c, '.');
-    if ($n) { // insert token
-      array_push($a, substr($c, 0, $n) . $this->set->sfx . substr($c, $n));
-      $r = implode(self::DS, $a);
-    } else {  // append token 
-      $r = $src . $this->set->sfx;
-    }
-    return $r;
-  }
-
-  /**
    * match file type against the patterns
    * @param string $tpe
    * @param string $flg -- true - full info
@@ -642,9 +658,10 @@ abstract class Minify {
    * display result data
    * @param string $src 
    * @param string $dst
+   * @param string $err
    * @return string to echo
    */
-  private function Result($src, $dst) {
+  private function Result($src, $dst, $err) {
     list($ct, $cp) = $this->cnt;  // total and minified
     $this->Msg('ok', "'$src' => '$dst' ($cp/$ct)");
     $sec = microtime(true) - $this->tme; // elapsed secs
@@ -655,6 +672,9 @@ abstract class Minify {
     $this->cnt[] = $this->pks; // packed by type
     list($tot, $min, $lns, $cmr, $tps) = $this->cnt;
     $str = "{$this->sgr[0]} $tme[0]"; // message header
+    if (!empty($err)) {
+      $str .= "\n{$err}";
+    }
     $str .= "\n{$this->txt['src']}: " . realpath($src);
     $str .= "\n{$this->txt['dst']}: " . realpath($dst);
     if ($this->lvl % 2 == 0 || !isset($tps['js'])) {
@@ -678,7 +698,7 @@ abstract class Minify {
       $str .= "\n\t{$this->txt[$cc]}: $c";
     }
     $o = $obf[0] + $obf[1];
-    $str .= "\n{$this->txt['obf']}: $obf[0]+$obf[1]=$o";
+    $str .= "\n{$this->txt['obf']}: $obf[1]+$obf[0]=$o";
     if ($obf[1]) { //obfuscation made
       $str .= "\n{$this->txt['irr']}: $id/$rpl";
       $obs = [T_VARIABLE => $this->txt['vrs'], T_CONST => $this->txt['cns'], T_START_HEREDOC => $this->txt['hds'], T_FUNCTION => $this->txt['fns'], T_CLASS => $this->txt['cls'], T_TRAIT => $this->txt['trs']];  /* tokens list */
@@ -767,7 +787,7 @@ abstract class Minify {
       'src' => 'From',
       'dst' => 'To',
       'fmt' => 'Files minified/total',
-      'obf' => 'Files (js+php) obfuscated',
+      'obf' => 'Files (php+js) obfuscated',
       'irr' => 'Identifiers (php) mapped/replaced',
       'vrs' => 'variables',
       'cns' => 'constants',
@@ -782,12 +802,21 @@ abstract class Minify {
       'sec' => 'sec'
   ];
 
+  /**
+   * get a property value 
+   * @param string $prop -- property
+   * @return mixed|null
+   */
+  public function __get($prop) {
+    return isset($this->$prop) ? $this->$prop : null;
+  }
+
 }
 
 class PackApp extends Minify {
 
-  public $ver = '0.1.0'; /* version */
-  public $lic = 'Try'; /* license */
+  protected $ver = '0.1.1'; /* version */
+  protected $lic = 'Try'; /* license */
   
   /**
    * 
