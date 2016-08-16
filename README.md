@@ -250,5 +250,6 @@ Special thanks to the authors referred. Please [contact] for any questions regar
 [Vallo Reima]: https://github.com/hareko/php-merge-xml
 
 ## ChangeLog ##
-15 Aug 2016
-- Compact CSS option (either Reinhold-Weber or YUICompressor method)
+- 16 Aug 2016
+    - Compact CSS option (either Reinhold-Weber or YUICompressor method)
+    - GUI result download
