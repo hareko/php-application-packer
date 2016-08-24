@@ -66,7 +66,7 @@ B) Instantiation and invocation:
 
 **$opt** - the options array:
 
-- **exf** - array of the folder/file name wildcards to exclude from the packing (default by *['\*.min.\*']*)
+- **exf** - array of the folder/file name wildcards to exclude from the packing (default by *'\*.min.\*'*)
 - **sbd** - recurse sub-directories (default by *true*)
 - **cpy** - copy non-minified files (default by *true*)
 - **pgn** - user plugins (see below)
