@@ -253,3 +253,5 @@ Special thanks to the authors referred. Please [contact] for any questions regar
 - 16 Aug 2016
     - Compact CSS option (either Reinhold-Weber or YUICompressor method)
     - GUI result download
+- 19 Oct 2016
+    - ZipArchive PHP7 compatibility
