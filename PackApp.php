@@ -349,8 +349,13 @@ abstract class Minify {
    * @return int|array
    */
   protected function PackZipU($src, $dst) {
-    $zip = new ZipArchive;
-    if ($zip->open($src, ZipArchive::CHECKCONS) === true) {
+    if (class_exists('ZipArchive')) {
+      $zip = new ZipArchive;
+      $r = $zip->open($src, ZipArchive::CHECKCONS);
+    } else {
+      $r = 0;
+    }
+    if ($r === true) {
       if ($zip->extractTo($dst)) {
         $rlt = $zip->numFiles;
       } else {
@@ -358,7 +363,7 @@ abstract class Minify {
       }
       $zip->close();
     } else {
-      $rlt = ['sri', $src]; // bad zip
+      $rlt = ['sri', "$src ($r)"]; // bad zip
     }
     return $rlt;
   }
@@ -369,8 +374,13 @@ abstract class Minify {
    * @param string $dst 
    */
   protected function PackZipC($src, $dst) {
-    $zip = new ZipArchive;
-    if ($zip->open($dst, ZipArchive::OVERWRITE) === true) {
+    if (class_exists('ZipArchive')) {
+      $zip = new ZipArchive;
+      $r = $zip->open($dst, ZipArchive::CREATE || ZipArchive::OVERWRITE);
+    } else {
+      $r = 0;
+    }
+    if ($r === true) {
       $rlt = $this->Zip($src, $zip);
       if (is_string($rlt)) {
         $rlt = ['noz', $rlt]; // couldn't zip
@@ -381,7 +391,7 @@ abstract class Minify {
       }
       $zip->close();  /* save data */
     } else {
-      $rlt = ['noc', $dst]; // can't create
+      $rlt = ['noc', "$dst ($r)"]; // can't create
     }
     return $rlt;
   }
@@ -815,7 +825,7 @@ abstract class Minify {
 
 class PackApp extends Minify {
 
-  protected $ver = '0.1.1'; /* version */
+  protected $ver = '0.1.2'; /* version */
   protected $lic = 'Try'; /* license */
   
   /**
