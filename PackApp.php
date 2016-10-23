@@ -7,6 +7,8 @@
  * Requirements:
  *  PHP 5.4+ with mbstring, zip
  *  Dependencies: plugins - PackCSS, PackHTM, PackJS, PackJSON, PackPHP, PackXML
+ *                addons - PackAppS, PackAppO
+ *                SaaS - vRegistry buy/pap
  *
  * @package Packer
  * @author Vallo Reima
@@ -19,7 +21,7 @@ abstract class Minify {
   const FOL = 2;  /* folder mode */
   const ARC = 3;  /* archives mode */
 
-  protected $app; /* program name */
+  private $app = 'pap'; /* application token */
   protected $opt = [ /* initial options */
       'lvl' => 0,
       'src' => '',
@@ -62,14 +64,14 @@ abstract class Minify {
   public function __construct($lvl, $opt) {
     date_default_timezone_set(@date_default_timezone_get()); // define if not defined
     $app = __FILE__;  // apps filename
-    $this->app = basename($app);
+    $a = basename($app);
     $this->tzn = date_default_timezone_get(); // save user zone
     date_default_timezone_set('UTC'); // work in utc
     $this->tme = microtime(true);
     $this->Options($opt);
-    $this->sgr[0] = "$this->app {$this->lic} {$this->ver}";  // messages signature
+    $this->sgr[0] = "$a {$this->lic} {$this->ver}";  // messages signature
     if ($this->set->sgn) { // prepend to php/js/css output
-      $this->sgr[1] = str_replace(['{app}', '{ver}', '{time}'], [$this->app, $this->ver, $this->Date(false)], $this->set->sgn); // stamp signature
+      $this->sgr[1] = str_replace(['{app}', '{ver}', '{time}'], [$a, $this->ver, $this->Date(false)], $this->set->sgn); // stamp signature
     }
     set_time_limit($this->set->tml);
     $this->lgf = substr($app, 0, -strlen(pathinfo($app, PATHINFO_EXTENSION))) . 'log';
@@ -193,7 +195,7 @@ abstract class Minify {
     }
     $mde = $this->err ? false : $this->Mode($src, $dst);
     if (!$this->err) {  // mode ok
-      $tmp = sys_get_temp_dir() . self::DS . uniqid($this->set->arc); // temporary (un)packing folder
+      $tmp = sys_get_temp_dir() . self::DS . uniqid($this->app); // temporary (un)packing folder
       if (!$rpl && file_exists($dst)) {
         $this->Msg('dse', basename($dst)); // don't replace
       } else if ($mde[0] == self::FIL) {
@@ -275,7 +277,7 @@ abstract class Minify {
    *                  string - bad src|dst
    *                  bool - error
    */
-  public function Mode($src, $dst) {
+  protected function Mode($src, $dst) {
     $exs = mb_strtolower(pathinfo($src, PATHINFO_EXTENSION)); // source name extension 
     if (is_dir($src)) {
       $mde = self::FOL; // folder 
@@ -323,7 +325,7 @@ abstract class Minify {
    * @param bool $flg -- true - compact
    * @return bool
    */
-  public function Archives($src, $dst, $flg) {
+  protected function Archives($src, $dst, $flg) {
     $mth = 'Pack' . ucfirst(mb_strtolower($this->set->arc)) . ($flg ? 'C' : 'U'); // archiving method
     $r = $this->$mth($src, $dst);
     $rlt = is_int($r);
@@ -348,7 +350,7 @@ abstract class Minify {
    * @param string $dst 
    * @return int|array
    */
-  protected function PackZipU($src, $dst) {
+  private function PackZipU($src, $dst) {
     if (class_exists('ZipArchive')) {
       $zip = new ZipArchive;
       $r = $zip->open($src, ZipArchive::CHECKCONS);
@@ -373,7 +375,7 @@ abstract class Minify {
    * @param string $src 
    * @param string $dst 
    */
-  protected function PackZipC($src, $dst) {
+  private function PackZipC($src, $dst) {
     if (class_exists('ZipArchive')) {
       $zip = new ZipArchive;
       $r = $zip->open($dst, ZipArchive::CREATE || ZipArchive::OVERWRITE);
