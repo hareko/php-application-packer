@@ -386,14 +386,20 @@ abstract class Minify {
       $rlt = $this->Zip($src, $zip);
       if (is_string($rlt)) {
         $rlt = ['noz', $rlt]; // couldn't zip
-      } else if ($rlt != $zip->numFiles) {
-        $rlt = ['noz', "$rlt/$zip->numFiles"]; // adding and zipping counts are different
       } else {
-        $rlt = $zip->numFiles;
+        $zip->close();  /* save data */
+        $r = $zip->open($dst, ZipArchive::CHECKCONS); //validate
+        if ($r !== true) {
+          $rlt = 'noz';
+        } else if ($rlt != $zip->numFiles) {
+          $rlt = ['noz', "$rlt/$zip->numFiles"]; // adding and zipping counts are different
+        }
       }
-      $zip->close();  /* save data */
     } else {
       $rlt = ['noc', "$dst ($r)"]; // can't create
+    }
+    if ($r === true) {
+      $zip->close();
     }
     return $rlt;
   }
