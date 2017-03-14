@@ -833,7 +833,7 @@ abstract class Minify {
 
 class PackApp extends Minify {
 
-  protected $ver = '0.1.2'; /* version */
+  protected $ver = '0.1.3'; /* version */
   protected $lic = 'Try'; /* license */
   
   /**
