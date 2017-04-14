@@ -238,7 +238,7 @@ abstract class Minify {
     }
     if (isset($this->opr)) {  // comshell
       $b = explode("\n", $c);
-      $this->rlt[1] = explode(':', array_shift($b));
+      $this->rlt[1] = explode(':', array_shift($b), 2);
       $this->rlt[1] = array_merge($this->rlt[1], $b);
       if (!$this->err || $this->rlt[0] == 'dse') {
         array_push($this->rlt[1], $src, $dst);  // pass to shell
