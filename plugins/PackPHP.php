@@ -76,7 +76,10 @@ class PackPHP {
    * @return array
    */
   private function process($php) {
-    $flg = $this->obn ? false : null; //php detection
+    $flg = $this->obn ? false : null; //php identifiers' collection
+    if (mb_stripos(pathinfo($this->fle, PATHINFO_EXTENSION), 'php') !== 0) {//not php file
+      $php = $this->Fix($php); //04.2017
+    }
     $rlt = $this->Compress($php, $flg);
     if (!$this->min) {
       $rlt = $php;  // return not-packed
@@ -85,6 +88,34 @@ class PackPHP {
       call_user_func($this->obn, -1, $this->fle); // save filename
     }
     return $rlt;
+  }
+
+  /**
+   * add a space if missing after the tag
+   * @param string $src
+   * @return string
+   */
+  private function Fix($src) {
+    $t = '<?php';
+    $l = strlen($t);
+    $s = '';
+    $n = mb_strlen($src);
+    $i = 0;
+    while ($i < $n) {
+      $k = mb_stripos($src, $t, $i);
+      if ($k === false) {
+        $s .= mb_substr($src, $i, $n - $i);
+        $i = $n;
+      } else {//tag found
+        $k += $l;
+        $s .= mb_substr($src, $i, $k - $i);
+        $i = $k;
+        if ($i < $n && mb_substr($src, $i, 1) !== ' ') {
+          $s .= ' ';//insert missing space
+        }
+      }
+    }
+    return $s;
   }
 
   /**
@@ -164,7 +195,7 @@ class PackPHP {
             }
             $new .= $ts;
             $iw = false;
-            if (!is_null($flg)) {//VR registration
+            if (!is_null($flg)) {//VR identifier registration
               call_user_func($this->obn, $i, $tokens); //save possible identifier
               $flg = !is_null($ot) || $flg; // mark php content
             }
