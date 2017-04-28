@@ -131,7 +131,7 @@ The source files of relevant file type are minified by removing the comments, wh
 The *\*htm\** files are checked for the *style* and *script* tags which content is minified too. 
 The files (except *xml*) are checked also for the *php* tags to pack their content.
 
-NB! Don't use the "one-line" comments (//) in the embedded multi-line php code inside the script tags.
+NB! Don't use the "one-line" comments (//) in the embedded PHP code inside the script tags.
 
 ### Obfuscating ###
 
