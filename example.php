@@ -20,8 +20,8 @@ if (version_compare(PHP_VERSION, $ver, '<')) {
 
 require('PackApp.php'); // main class, loads the others if needed
 
-$old = 'tests'; // source folder
-$new = 'tests.zip'; // destination zipped
+$old = 'tests.zip'; // source zipped
+$new = 'tests_pkd'; // destination folder
 
 /* js and php obfuscation; maximum replacement of the PHP identifiers except 'vv' identifier; defined constants can be case-insensitive */
 $obj = new PackApp(3, ['ids' => 'VdHFTC', 'exi' => ['vv']]); // instantiate
