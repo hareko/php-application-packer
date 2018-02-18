@@ -233,7 +233,7 @@ The *plugins* folder contains the minifiers adapted from the open source. The *a
 - *plugins/PackPHP.php* - php minifier class, adjusted from the algorithm by [GelaMu]
 - *plugins/PackXML.php* - xml minifier class by [Vallo Reima]
 - *example.php* - instantiation sample script
-- *tests.zip* - test folders/files for the usage sample
+- *tests.zip* - test files for the usage sample
 - *index.php* - GUI starter script (except free version)
 
 Special thanks to the authors referred. Please [contact] for any questions regarding the Packer.
