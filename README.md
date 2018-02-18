@@ -66,7 +66,7 @@ B) Instantiation and invocation:
 
 **$opt** - the options array:
 
-- **exf** - array of the folder/file name wildcards to exclude from the packing (default by *'\*.min.\*'*)
+- **exf** - array of the folder/file name wildcards to exclude from the packing (default by *['\*.min.\*']*)
 - **sbd** - recurse sub-directories (default by *true*)
 - **cpy** - copy non-minified files (default by *true*)
 - **pgn** - user plugins (see below)
@@ -130,8 +130,6 @@ The rest of the files are simply copied or skipped. Use the **pgn** option for a
 The source files of relevant file type are minified by removing the comments, whitespaces and linebreaks. 
 The *\*htm\** files are checked for the *style* and *script* tags which content is minified too. 
 The files (except *xml*) are checked also for the *php* tags to pack their content.
-
-NB! Don't use the "one-line" comments (//) in the embedded PHP code inside the script tags.
 
 ### Obfuscating ###
 
@@ -206,7 +204,7 @@ These rules are natural to follow and secure from the identifier name collisions
 Unzip the obtained package and upload the files to your selected web directory. Then run *example.php*. The extended version requires the Setup before exploiting. It launches the installer automatically if not set up yet. 
 Run *PackApp.php* from the browser to launch the installer directly.
 
-The included example minifies/obfuscates the files from the *tests* folder and compresses the result into the *tests.zip*. 
+The included example minifies/obfuscates the files from the *tests.zip* and outputs the result into the *tests_pkd* folder. 
 A message informs about the result. The statistics collected by the packer are displayed and saved into *example.txt*. 
 
 Make a copy from the *example.php* and try it with different sources, destinations and options. Run *index.php* to launch the GUI supplied by an extended version.
@@ -234,8 +232,8 @@ The *plugins* folder contains the minifiers adapted from the open source. The *a
 - *plugins/PackJSON.php* - json minifier class by [Tiste], originally by [Kyle Simpson]
 - *plugins/PackPHP.php* - php minifier class, adjusted from the algorithm by [GelaMu]
 - *plugins/PackXML.php* - xml minifier class by [Vallo Reima]
-- *tests/test.\** - test folders/files for the usage sample
 - *example.php* - instantiation sample script
+- *tests.zip* - test folders/files for the usage sample
 - *index.php* - GUI starter script (except free version)
 
 Special thanks to the authors referred. Please [contact] for any questions regarding the Packer.
@@ -253,7 +251,7 @@ Special thanks to the authors referred. Please [contact] for any questions regar
 
 ## ChangeLog ##
 - 16 Aug 2016
-    - Compact CSS option (either Reinhold-Weber or YUICompressor method)
+    - Compact CSS option ($lvl parameter)
     - GUI result download
 - 19 Oct 2016
     - ZipArchive PHP7 compatibility
