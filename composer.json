@@ -4,7 +4,7 @@
     "description": "PackApp.php utility to create packages of project files for distribution by minifying, obfuscating, zipping the source code",
     "keywords": ["minify","minifier","minifying","minifier","obfuscate","obfuscator","obfuscating"],
     "homepage": "https://github.com/hareko/php-application-packer",
-    "license": "BSD",
+    "license": "MIT",
     "authors": [
         {
             "name": "Vallo Reima",
